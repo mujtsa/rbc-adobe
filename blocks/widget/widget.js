@@ -1,4 +1,5 @@
 import { loadCSS } from '../../scripts/aem.js';
+import { sanitizeHtml } from '../../utils/dom.js';
 
 /**
  * Parses a widget href into folder path and name.
@@ -64,7 +65,7 @@ export default async function decorate(widget) {
     applyWidgetShell(widget, source, widgetName, searchParams);
 
     const resp = await fetch(widgetUrl(widgetPath, widgetName, 'html'));
-    widget.innerHTML = await resp.text();
+    widget.append(sanitizeHtml(await resp.text()));
 
     const cssLoaded = loadCSS(widgetUrl(widgetPath, widgetName, 'css'));
     const decorationComplete = (async () => {

@@ -17,10 +17,23 @@ function card(person, ph) {
   const first = person.Nickname || person.Name.split(' ')[0];
   li.append(createOptimizedPicture(person.Image, person.Name, false, [{ width: '320' }]));
   const body = document.createElement('div');
-  body.innerHTML = `<h3>${person.Name}<span>${person.Location}</span></h3>
-    <p><strong>${ph.arrived || 'Arrived in Canada'}:</strong> ${person.Arrived}</p>
-    <p><strong>${ph.speaks || 'Speaks'}:</strong> ${person.Speaks}</p>
-    <p class="advisor-finder-quote">${person.Quote}</p>`;
+  const h3 = document.createElement('h3');
+  h3.textContent = person.Name;
+  const locationSpan = document.createElement('span');
+  locationSpan.textContent = person.Location;
+  h3.append(locationSpan);
+  const arrivedP = document.createElement('p');
+  const arrivedStrong = document.createElement('strong');
+  arrivedStrong.textContent = `${ph.arrived || 'Arrived in Canada'}:`;
+  arrivedP.append(arrivedStrong, ` ${person.Arrived}`);
+  const speaksP = document.createElement('p');
+  const speaksStrong = document.createElement('strong');
+  speaksStrong.textContent = `${ph.speaks || 'Speaks'}:`;
+  speaksP.append(speaksStrong, ` ${person.Speaks}`);
+  const quoteP = document.createElement('p');
+  quoteP.className = 'advisor-finder-quote';
+  quoteP.textContent = person.Quote;
+  body.append(h3, arrivedP, speaksP, quoteP);
   if (person.Bio) {
     const more = document.createElement('button');
     more.type = 'button';

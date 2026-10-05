@@ -13,6 +13,8 @@ import {
   loadSections,
 } from '../../scripts/aem.js';
 
+import { sanitizeHtml } from '../../utils/dom.js';
+
 /**
  * Loads a fragment.
  * @param {string} path The path to the fragment
@@ -23,12 +25,14 @@ export async function loadFragment(path) {
     const resp = await fetch(`${path}.plain.html`);
     if (resp.ok) {
       const main = document.createElement('main');
-      main.innerHTML = await resp.text();
+      main.append(sanitizeHtml(await resp.text()));
 
       // reset base path for media to fragment base
       const resetAttributeBase = (tag, attr) => {
         main.querySelectorAll(`${tag}[${attr}^="./media_"]`).forEach((elem) => {
-          elem[attr] = new URL(elem.getAttribute(attr), new URL(path, window.location)).href;
+          const url = new URL(elem.getAttribute(attr), new URL(path, window.location)).href;
+          if (attr === 'src') elem.src = url;
+          else if (attr === 'srcset') elem.srcset = url;
         });
       };
       resetAttributeBase('img', 'src');

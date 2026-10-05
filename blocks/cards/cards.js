@@ -1,6 +1,7 @@
 import {
   createOptimizedPicture, readBlockConfig, toCamelCase, toClassName,
 } from '../../scripts/aem.js';
+import { escapeHtml, sanitizeHtml, resolveUrl } from '../../utils/dom.js';
 import decorateTile, { tileWords } from './tiles.js';
 import {
   getProduct, getProducts, monthlyFees, pickHighlights, keyList, offerLegalPage, isPrice, zeroPrice,
@@ -12,20 +13,27 @@ import {
 } from '../../utils/footnotes.js';
 
 function button(text, href, kind) {
-  return `<p class="button-wrapper"><a class="button ${kind}" href="${href}">${text}</a></p>`;
+  return `<p class="button-wrapper"><a class="button ${kind}" href="${escapeHtml(href)}">${text}</a></p>`;
+}
+
+// highlight links may be same-origin or external HTTPS (e.g. offer detail pages)
+function safeHref(url) {
+  return resolveUrl(url) || '#';
 }
 
 function claim(text, href, page) {
   if (!href) return expandRefs(text, page);
+  const safe = safeHref(href);
   const end = text.lastIndexOf(']]');
-  if (end < 0) return `<a href="${href}">${text}</a>`;
+  if (end < 0) return `<a href="${safe}">${escapeHtml(text)}</a>`;
   const [, lead, tail] = text.slice(end + 2).match(/^([^\w$]*)([\s\S]*)$/);
-  if (!tail) return `<a href="${href}">${stripRefs(text)}</a>${footnoteSup(refIds(text), page)}`;
-  return `${expandRefs(text.slice(0, end + 2), page)}${lead}<a href="${href}">${tail}</a>`;
+  if (!tail) return `<a href="${safe}">${stripRefs(text)}</a>${footnoteSup(refIds(text), page)}`;
+  return `${expandRefs(text.slice(0, end + 2), page)}${lead}<a href="${safe}">${escapeHtml(tail)}</a>`;
 }
 
 function offerLink(product, text) {
-  return product.offerDetailsUrl ? `<a href="${product.offerDetailsUrl}" target="_blank" rel="noopener">${text}</a>` : text;
+  const href = resolveUrl(product.offerDetailsUrl); // offer pages may be external HTTPS
+  return href ? `<a href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer">${text}</a>` : text;
 }
 
 function priceLine(product, ph) {
@@ -93,8 +101,13 @@ async function expandFilterRows(anchor, config) {
     && (persona.length ? persona.includes(p.persona) : !p.variantOf);
   const products = (await getProducts()).filter(wanted);
   anchor.before(...products.map((p) => {
+    const a = document.createElement('a');
+    a.href = resolveUrl(p.path, true) || '#'; // product index paths are always same-origin
+    a.textContent = p.path;
+    const cell = document.createElement('div');
+    cell.append(a);
     const row = document.createElement('div');
-    row.innerHTML = `<div><a href="${p.path}">${p.path}</a></div>`;
+    row.append(cell);
     return row;
   }));
 }
@@ -118,7 +131,7 @@ async function renderProductRows(block) {
     const product = await getProduct(row.querySelector('a').getAttribute('href'));
     if (!product) { row.remove(); return; }
     const body = document.createElement('div');
-    body.innerHTML = productBody(product, ph, variant, keyList(row.children[1]), options);
+    body.append(sanitizeHtml(productBody(product, ph, variant, keyList(row.children[1]), options)));
     if (variant !== 'compact') body.dataset.category = product.category;
     row.replaceChildren(body);
     if (variant === 'picture' && product.image) {

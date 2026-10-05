@@ -1,4 +1,5 @@
 import { createOptimizedPicture } from '../../scripts/aem.js';
+import { sanitizeHtml } from '../../utils/dom.js';
 import { getProduct, offerLegalPage } from '../../utils/products.js';
 import fetchLocalPlaceholders from '../../utils/placeholders.js';
 import { rateSpan } from '../../utils/rates.js';
@@ -78,7 +79,7 @@ export default async function decorate(block) {
   const link = block.querySelector('a[href*="/products/"]');
   if (link && block.textContent.trim() === link.textContent.trim()) {
     const product = await getProduct(link.getAttribute('href'));
-    if (product) block.innerHTML = railRows(product, ph);
+    if (product) block.replaceChildren(sanitizeHtml(railRows(product, ph)));
     await resolveRefLinks(block);
   }
   [...block.children].forEach((r) => {

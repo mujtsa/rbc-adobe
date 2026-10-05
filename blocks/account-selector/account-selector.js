@@ -4,6 +4,7 @@ import {
   getProduct, getProducts, pickHighlights, isPrice,
 } from '../../utils/products.js';
 import { footnoteSup, expandRefs, resolveRefLinks } from '../../utils/footnotes.js';
+import { escapeHtml, sanitizeHtml, resolveUrl } from '../../utils/dom.js';
 
 const SHEET = '/fragments/account-selector.json';
 const TABS = { 'fr-CA': 'fr', 'zh-Hans': 'sc', 'zh-Hant': 'tc' };
@@ -163,12 +164,12 @@ function productCard(product, text) {
   li.dataset.name = product.name;
   li.dataset.slug = product.slug;
   li.innerHTML = `<p class="account-selector-badge">${text('badge')}</p>
-    <div class="account-selector-head"><h3>${product.name}</h3><p>${product.tagline}</p></div>
+    <div class="account-selector-head"><h3>${escapeHtml(product.name)}</h3><p>${escapeHtml(product.tagline)}</p></div>
     <div class="account-selector-body">
-      <p>${product.fees[0]?.displayValue || ''}${isPrice(product.fees[0]?.displayValue) ? text('per-month') : ''}${sup(product.fees[0]?.footnotes)}</p>
+      <p>${escapeHtml(product.fees[0]?.displayValue || '')}${isPrice(product.fees[0]?.displayValue) ? text('per-month') : ''}${sup(product.fees[0]?.footnotes)}</p>
       <ul>${pickHighlights(product).slice(0, 3).map((h) => `<li>${expandRefs(h.text, product.productPage)}</li>`).join('')}</ul>
-      ${product.applyUrl ? `<p class="button-wrapper"><a class="button primary" href="${product.applyUrl}">${text('open-this-account')}</a></p>` : ''}
-      <p><a href="${product.productPage}">${text('view-account-details')}</a></p>
+      ${resolveUrl(product.applyUrl) ? `<p class="button-wrapper"><a class="button primary" href="${escapeHtml(resolveUrl(product.applyUrl))}">${text('open-this-account')}</a></p>` : ''}
+      <p><a href="${escapeHtml(resolveUrl(product.productPage, true) || '#')}">${text('view-account-details')}</a></p>
     </div>`;
   return li;
 }
@@ -194,7 +195,9 @@ export default async function decorate(block) {
   const config = applyConfig(block, TEMPLATE);
   // block rows win over the sheet
   block.querySelectorAll('[data-key]').forEach((el) => {
-    if (!(el.dataset.key in config) && copy[el.dataset.key]) el.innerHTML = copy[el.dataset.key];
+    if (!(el.dataset.key in config) && copy[el.dataset.key]) {
+      el.replaceChildren(sanitizeHtml(copy[el.dataset.key]));
+    }
   });
   const short = block.classList.contains('short');
   const slider = block.classList.contains('slider');
@@ -280,6 +283,7 @@ export default async function decorate(block) {
     }
     if (handoff) {
       const url = new URL(config.handoff || '/', window.location.href);
+      if (url.origin !== window.location.origin) return;
       new URLSearchParams(new FormData(form)).forEach((v, k) => url.searchParams.set(k, v));
       window.location.assign(url);
       return;
